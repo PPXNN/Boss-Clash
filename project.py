@@ -488,7 +488,7 @@ class Boss:
             created = 0
 
             min_x, max_x = 50, WIDTH - lava_width - 50
-            min_y, max_y = HEIGHT // 2 - 15, HEIGHT - lava_height - 50
+            min_y, max_y = HEIGHT // 2 - 18, HEIGHT - lava_height - 50
 
             while created < 4 and max_attempts > 0:
                 max_attempts -= 1
@@ -561,7 +561,7 @@ class Boss:
             created = 0
 
             min_x, max_x = 50, WIDTH - snow_width - 50
-            min_y, max_y = HEIGHT // 2 - 15, HEIGHT - snow_height - 50
+            min_y, max_y = HEIGHT // 2 - 18, HEIGHT - snow_height - 50
 
             while created < 4 and max_attempts > 0:
                 max_attempts -= 1
