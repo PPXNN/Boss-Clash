@@ -882,7 +882,7 @@ class GameOverScreen:
         time_text = input_font.render(f"Time Survived: {self.format_time(time)}", True, WHITE)
         screen.blit(time_text, (WIDTH // 2 - time_text.get_width() // 2, HEIGHT // 3 + 20))
 
-        boss_defeat_text = input_font.render(f"Boss Defated: {player.boss_defeated}", True, WHITE)
+        boss_defeat_text = input_font.render(f"Boss Defeated: {player.boss_defeated}", True, WHITE)
         screen.blit(boss_defeat_text, (WIDTH // 2 - boss_defeat_text.get_width() // 2, HEIGHT // 3 + 90))
 
         pygame.draw.rect(screen, GRAY, self.retry_button, border_radius=10)
