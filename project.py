@@ -76,7 +76,7 @@ class CharacterSelection:
 
     def draw_quit_button(self):
         pygame.draw.rect(screen, RED, self.quit_button, border_radius=10)
-        pygame.draw.rect(screen, BLACK, self.quit_button, 2, border_radius=10)  # Border
+        pygame.draw.rect(screen, BLACK, self.quit_button, 2, border_radius=10)
 
         quit_text = self.button_font.render("Quit Game", True, WHITE)
         quit_rect = quit_text.get_rect(center=self.quit_button.center)
@@ -330,7 +330,7 @@ class Player:
             ability_last_used = time.time()
 
     def deflect(self, ball, boss, boss_x, boss_y):
-        if self.frozen or time.time() < self.freeze_end_time + 0.5:  # Small buffer
+        if self.frozen or time.time() < self.freeze_end_time + 0.5:
             return
 
         player_center_x = self.x + self.hitbox_x + self.hitbox_width // 2
@@ -391,7 +391,6 @@ class DeflectParticle:
         self.birth_time = time.time()
 
     def update(self):
-        # Move particle
         self.x += self.speed_x
         self.y += self.speed_y
         self.size = max(0, self.size - 0.1)
@@ -604,7 +603,7 @@ class Boss:
                         player_on_snow = True
                         if (snow.player_on_snow_time is not None and time.time() - snow.player_on_snow_time >= 2):
                             player.frozen = True
-                            player.freeze_end_time = time.time() + 2  # Freeze for 2 sec
+                            player.freeze_end_time = time.time() + 2
                             snow.player_on_snow_time = None
 
             if player_on_snow:
