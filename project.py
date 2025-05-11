@@ -5,6 +5,14 @@ from tkinter import simpledialog
 import random
 import sys
 import math
+import csv
+from datetime import datetime
+import os
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+import threading
+import numpy as np
+from matplotlib.lines import Line2D
 
 pygame.init()
 
@@ -41,6 +49,55 @@ ABILITY_COOLDOWN = 10
 dash_last_used = 0
 ability_last_used = 0
 
+class DataCollector:
+    def __init__(self):
+        self.data = "game_data"
+        os.makedirs(self.data, exist_ok=True)
+
+        self.dash_file = os.path.join(self.data, "dash_usage.csv")
+        self.ability_usage_file = os.path.join(self.data, "ability_usage.csv")
+        self.playtime_file = os.path.join(self.data, "playtime.csv")
+        self.boss_defeated_file = os.path.join(self.data, "boss_defeated.csv")
+        self.character_choice_file = os.path.join(self.data, "character_choice.csv")
+
+        self.init_csv(self.dash_file, ["timestamp", "boss_type", "dash_count"])
+        self.init_csv(self.ability_usage_file, ["timestamp", "character_id", "ability_count"])
+        self.init_csv(self.playtime_file, ["time_stamp", "playtime_seconds"])
+        self.init_csv(self.boss_defeated_file, ["time_stamp", "character_id", "defeated"])
+        self.init_csv(self.character_choice_file, ["time_stamp", "character_id"])
+
+    def init_csv(self, file_name, headers):
+        if not os.path.exists(file_name):
+            with open(file_name, "w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(headers)
+        else:
+            with open(file_name, "r+", newline='') as file:
+                data = file.read()
+                if data and not data.endswith('\n'):
+                    file.write('\n')
+
+    def record_dash_usage(self, boss_type, dash_count):
+        self.add_csv(self.dash_file, [datetime.now().strftime('%Y-%m-%dT%H:%M:%S'), boss_type, dash_count])
+
+    def record_ability_usage(self, character, count):
+        self.add_csv(self.ability_usage_file, [datetime.now().strftime('%Y-%m-%dT%H:%M:%S'), character, count])
+
+    def record_playtime(self, playtime):
+        self.add_csv(self.playtime_file, [datetime.now().strftime('%Y-%m-%dT%H:%M:%S'), playtime])
+
+    def record_boss_defeated(self, character_id, defeated):
+        self.add_csv(self.boss_defeated_file, [datetime.now().strftime('%Y-%m-%dT%H:%M:%S'), character_id,defeated])
+
+    def record_character_choice(self, character):
+        self.add_csv(self.character_choice_file, [datetime.now().strftime('%Y-%m-%dT%H:%M:%S'), character])
+
+    def add_csv(self, file, row):
+        with open(file, 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(row)
+
+
 class CharacterSelection:
     def __init__(self):
         char_width, char_height = 200, 200
@@ -67,6 +124,8 @@ class CharacterSelection:
         button_width, button_height = 200, 50
         self.quit_button = pygame.Rect((WIDTH - button_width) // 2, 650, button_width, button_height)
         self.button_font = pygame.font.Font(None, 36)
+        self.view_stats_button = pygame.Rect((WIDTH - button_width) // 2, 580, button_width, button_height)
+
 
 
     def draw_title(self):
@@ -74,13 +133,19 @@ class CharacterSelection:
         text_rect = title_text.get_rect(center=(WIDTH // 2, 70))
         screen.blit(title_text, text_rect)
 
-    def draw_quit_button(self):
+    def draw_button(self):
         pygame.draw.rect(screen, RED, self.quit_button, border_radius=10)
         pygame.draw.rect(screen, BLACK, self.quit_button, 2, border_radius=10)
 
         quit_text = self.button_font.render("Quit Game", True, WHITE)
         quit_rect = quit_text.get_rect(center=self.quit_button.center)
         screen.blit(quit_text, quit_rect)
+
+        pygame.draw.rect(screen, BLUE, self.view_stats_button, border_radius=10)
+        pygame.draw.rect(screen, BLACK, self.view_stats_button, 2, border_radius=10)
+        stats_text = self.button_font.render("View Stats", True, WHITE)
+        stats_rect = stats_text.get_rect(center=self.view_stats_button.center)
+        screen.blit(stats_text, stats_rect)
 
     def draw_characters(self):
         for index, char in enumerate(self.characters):
@@ -96,20 +161,26 @@ class CharacterSelection:
             name_x = char["rect"].centerx - name_text.get_width() // 2
             screen.blit(name_text, (name_x, char["rect"].bottom + 10))
 
-
     def get_player_name(self):
-        self.draw_characters()
-        pygame.display.flip()
+        self.name_dialog_result = None
 
         root = tk.Tk()
         root.withdraw()
-        self.player_name = simpledialog.askstring("Character Name", "Enter your name:")
 
-        if self.player_name:
-            return True
-        else:
-            self.selected_character = None
-            return False
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        x = (screen_width - 300) // 2
+        y = (screen_height - 150) // 2
+        root.geometry(f"+{x}+{y}")
+
+        self.name_dialog_result = simpledialog.askstring(
+            "Character Name",
+            "Enter your name:",
+            parent=root
+        )
+
+        root.destroy()
+        return self.name_dialog_result
 
     def draw_instructions(self):
         instructions_text = input_font.render("Click to select your character", True, WHITE)
@@ -125,8 +196,19 @@ class CharacterSelection:
                     for index, char in enumerate(self.characters):
                         if char["rect"].collidepoint(event.pos):
                             self.selected_character = index
-                            if self.get_player_name():
+                            screen.blit(main_background, (0, 0))
+                            self.draw_title()
+                            self.draw_characters()
+                            self.draw_button()
+                            pygame.display.flip()
+                            name = self.get_player_name()
+                            if name:
+                                self.player_name = name
                                 return True
+                    if self.view_stats_button.collidepoint(event.pos):
+                            stats = StatsViewer()
+                            stats.run()
+                            return False
 
                     if self.quit_button.collidepoint(event.pos):
                         pygame.quit()
@@ -134,18 +216,431 @@ class CharacterSelection:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
                     self.selected_character = 0
-                    if self.get_player_name():
+                    screen.blit(main_background, (0, 0))
+                    self.draw_title()
+                    self.draw_characters()
+                    self.draw_button()
+                    pygame.display.flip()
+                    name = self.get_player_name()
+                    if name:
+                        self.player_name = name
                         return True
                 elif event.key == pygame.K_2:
                     self.selected_character = 1
-                    if self.get_player_name():
+                    screen.blit(main_background, (0, 0))
+                    self.draw_title()
+                    self.draw_characters()
+                    self.draw_button()
+                    name = self.get_player_name()
+                    if name:
+                        self.player_name = name
                         return True
                 elif event.key == pygame.K_3:
                     self.selected_character = 2
-                    if self.get_player_name():
+                    screen.blit(main_background, (0, 0))
+                    self.draw_title()
+                    self.draw_characters()
+                    self.draw_button()
+                    name = self.get_player_name()
+                    if name:
+                        self.player_name = name
                         return True
         return False
 
+
+class StatsViewer:
+    def __init__(self):
+        self.button_font = pygame.font.Font(None, 36)
+        self.title_font = pygame.font.Font(None, 60)
+
+        button_width, button_height = 300, 50
+        spacing = 70
+
+        self.ability_button = pygame.Rect((WIDTH - button_width) // 2, 200, button_width, button_height)
+        self.boss_button = pygame.Rect((WIDTH - button_width) // 2, 200 + spacing, button_width, button_height)
+        self.character_button = pygame.Rect((WIDTH - button_width) // 2, 200 + spacing * 2, button_width, button_height)
+        self.dash_button = pygame.Rect((WIDTH - button_width) // 2, 200 + spacing * 3, button_width, button_height)
+        self.playtime_button = pygame.Rect((WIDTH - button_width) // 2, 200 + spacing * 4, button_width, button_height)
+        self.back_button = pygame.Rect((WIDTH - button_width) // 2, 650, button_width, button_height)
+
+        self.buttons = [
+            (self.ability_button, "Ability Usage", BLUE),
+            (self.boss_button, "Boss Defeated", BLUE),
+            (self.character_button, "Character Choice", BLUE),
+            (self.dash_button, "Dash Usage", BLUE),
+            (self.playtime_button, "Playtime", BLUE),
+            (self.back_button, "Back to Menu", RED)
+        ]
+
+        self.data_collector = DataCollector()
+        self.character_names = ["Cryo", "Bastille", "Wraith"]
+
+        self.root = None
+
+
+    def draw(self):
+        screen.blit(main_background, (0, 0))
+
+        title_text = self.title_font.render("Game Statistics", True, WHITE)
+        screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 100))
+
+        for button, text, color in self.buttons:
+            pygame.draw.rect(screen, color, button, border_radius=10)
+            pygame.draw.rect(screen, BLACK, button, 2, border_radius=10)
+            button_text = self.button_font.render(text, True, WHITE)
+            screen.blit(button_text, (button.centerx - button_text.get_width() // 2,
+                                      button.centery - button_text.get_height() // 2))
+
+    def handle_input(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for button, text, _ in self.buttons:
+                        if button.collidepoint(event.pos):
+                            if text == "Back to Menu":
+                                return "back"
+                            elif text == "Ability Usage":
+                                self.show_ability_graph()
+                            elif text == "Boss Defeated":
+                                self.show_defeat_graph()
+                            elif text == "Character Choice":
+                                self.show_character_choice()
+                            elif text == "Dash Usage":
+                                self.show_dash_graph()
+                            elif text == "Playtime":
+                                self.show_time_play()
+        return None
+
+    def cleanup(self):
+        plt.close('all')
+        if self.root:
+            self.root.destroy()
+            self.root.quit()
+            self.root = None
+
+    def show_ability_graph(self):
+        threading.Thread(target=self.create_ability_graph, daemon=True).start()
+
+    def show_defeat_graph(self):
+        threading.Thread(target=self.create_defeat_graph, daemon=True).start()
+
+    def show_character_choice(self):
+        threading.Thread(target=self.create_character_choice_graph, daemon=True).start()
+
+    def show_dash_graph(self):
+        threading.Thread(target=self.create_dash_usage_graph, daemon=True).start()
+
+    def show_time_play(self):
+        threading.Thread(target=self.create_playtime_graph, daemon=True).start()
+
+    def create_playtime_graph(self):
+        playtimes = []
+
+        with open(self.data_collector.playtime_file, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)
+            for row in reader:
+                playtimes.append(float(row[1]))
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        stats = {
+            'min': np.min(playtimes),
+            'q1': np.percentile(playtimes, 25),
+            'median': np.median(playtimes),
+            'q3': np.percentile(playtimes, 75),
+            'max': np.max(playtimes)
+        }
+
+        box = ax.boxplot(playtimes, patch_artist=True,
+                         vert=False,
+                         boxprops=dict(facecolor='#FFBBBB', color='#FF5555', linewidth=2),
+                         whiskerprops=dict(color='#FF5555', linewidth=2),
+                         capprops=dict(color='#FF5555', linewidth=2),
+                         medianprops=dict(color='#FF0000', linewidth=2),
+                         flierprops=dict(marker='o', markersize=6,
+                                         markerfacecolor='#888888', markeredgecolor='none'))
+
+        ax.text(stats['min'], 1.3, f"Min: {stats['min']:.1f}",
+                ha='center', va='center', fontsize=10,
+                bbox=dict(facecolor='white', alpha=0.8, pad=4))
+
+        ax.text(stats['q1'], 1.3, f"Q1: {stats['q1']:.1f}",
+                ha='center', va='center', fontsize=10,
+                bbox=dict(facecolor='white', alpha=0.8, pad=4))
+
+        ax.text(stats['median'], 0.7, f"Median: {stats['median']:.1f}",
+                ha='center', va='center', fontsize=10,
+                bbox=dict(facecolor='white', alpha=0.8, pad=4))
+
+        ax.text(stats['q3'], 1.3, f"Q3: {stats['q3']:.1f}",
+                ha='center', va='center', fontsize=10,
+                bbox=dict(facecolor='white', alpha=0.8, pad=4))
+
+        ax.text(stats['max'], 1.3, f"Max: {stats['max']:.1f}",
+                ha='center', va='center', fontsize=10,
+                bbox=dict(facecolor='white', alpha=0.8, pad=4))
+
+        ax.set_title('Playtime Statistics (All Sessions)', pad=20, fontsize=14, fontweight='bold')
+        ax.set_xlabel('Playtime Duration (seconds)', fontsize=11)
+        ax.grid(axis='x', linestyle=':', alpha=0.4)
+        ax.set_yticks([])
+
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', label='Median',
+                   markerfacecolor='#FF0000', markersize=12),
+            Line2D([0], [0], marker='o', color='w', label='Quartiles',
+                   markerfacecolor='#FFBBBB', markersize=12),
+            Line2D([0], [0], marker='o', color='w', label='Outliers',
+                   markerfacecolor='#888888', markersize=10)
+        ]
+
+        ax.legend(handles=legend_elements, loc='lower right',
+                  title="Statistics", title_fontsize=11,
+                  framealpha=0.9, edgecolor='gray')
+
+
+        self.root = tk.Tk()
+        self.root.protocol("WM_DELETE_WINDOW", self.cleanup)
+        self.root.title("Playtime Statistics")
+        canvas = FigureCanvasTkAgg(fig, master=self.root)
+        canvas.draw()
+        canvas.get_tk_widget().pack()
+        button_quit = tk.Button(self.root, text="Quit", command=self.cleanup)
+        button_quit.pack()
+        self.root.mainloop()
+
+
+    def create_dash_usage_graph(self):
+        fire_dashes = []
+        ice_dashes = []
+
+        with open(self.data_collector.dash_file, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)
+            for row in reader:
+                if row[1] == 'fire':
+                    fire_dashes.append(int(row[2]))
+                elif row[1] == 'ice':
+                    ice_dashes.append(int(row[2]))
+
+        colors = ['#FF6B6B', '#6BA3FF']
+
+        avg_fire = np.mean(fire_dashes) if fire_dashes else 0
+        avg_ice = np.mean(ice_dashes) if ice_dashes else 0
+
+        fig, ax = plt.subplots(figsize=(7, 4))
+
+        bars = ax.bar(['Fire Boss', 'Ice Boss'],
+                      [avg_fire, avg_ice],
+                      color=['#FF6B6B', '#6BA3FF'])
+
+        ax.set_title('Average Dash Usage per Boss Type', pad=15)
+        ax.set_ylabel('Average Dashes Used')
+
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2., height,
+                    f'{int(height)}',
+                    ha='center', va='bottom')
+
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', label='Fire Boss',
+                   markerfacecolor=colors[0], markersize=12),
+            Line2D([0], [0], marker='o', color='w', label='Ice Boss',
+                   markerfacecolor=colors[1], markersize=12)
+        ]
+
+        ax.legend(
+            handles=legend_elements,
+            loc='upper right',
+            framealpha=0.9,
+            title="Boss Type",
+            title_fontproperties={'weight': 'bold'}
+        )
+
+        self.root = tk.Tk()
+        self.root.protocol("WM_DELETE_WINDOW", self.cleanup)
+        self.root.title("Dash Usage Statistics")
+        canvas = FigureCanvasTkAgg(fig, master=self.root)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        button_quit = tk.Button(self.root, text="Quit", command=self.cleanup)
+        button_quit.pack()
+        self.root.mainloop()
+
+
+    def create_character_choice_graph(self):
+        data = {0: 0, 1: 0, 2: 0}
+        with open(self.data_collector.character_choice_file, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)
+            for row in reader:
+                if len(row) >= 2:
+                    char_id = int(row[1])
+                    data[char_id] += 1
+
+
+        self.root = tk.Tk()
+        self.root.title("Character Selection Statistics")
+
+        fig = plt.figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        colors = ['#FF9999', '#66B2FF', '#99FF99']
+
+        wedges, texts, autotexts = ax.pie(
+            data.values(),
+            autopct=lambda p: f'{p:.1f}%',
+            startangle=90,
+            colors=colors,
+            textprops={'fontsize': 9}
+        )
+
+        for autotext in autotexts:
+            autotext.set_fontweight('bold')
+            autotext.set_color('black')
+
+        ax.set_title('Character Selection')
+        ax.axis('equal')
+
+        ax.legend(
+            wedges,
+            ['Cryo', 'Bastille', 'Wraith'],
+            title="Characters",
+            loc='upper left',
+            bbox_to_anchor=(-0.1, 1),
+        )
+
+        canvas = FigureCanvasTkAgg(fig, master=self.root)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        button_quit = tk.Button(self.root, text="Quit", command=self.cleanup)
+        button_quit.pack()
+
+        self.root.mainloop()
+
+    def create_defeat_graph(self):
+        data = {0: [], 1: [], 2: []}
+        with open(self.data_collector.boss_defeated_file, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)
+            for row in reader:
+                if len(row) >= 3:
+                    char_id = int(row[1])
+                    defeated = int(row[2])
+                    data[char_id].append(defeated)
+
+        total_defeats = [sum(data[i]) for i in range(3)]
+
+        self.root = tk.Tk()
+        self.root.title("Boss Defeat Statistics")
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        colors = ['#FF0000', '#0000FF', '#00FF00']
+
+        bars = ax.bar(range(3), total_defeats, color=colors)
+
+        ax.set_xticks(range(3))
+        ax.set_xticklabels(['0', '1', '2'])
+        ax.set_xlabel('Character ID')
+        ax.set_ylabel('Total Bosses Defeated')
+        ax.set_title('Boss Defeated')
+
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2., height,
+                    f'{int(height)}',
+                    ha='center', va='bottom')
+
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', label='Cryo',
+                   markerfacecolor=colors[0], markersize=10),
+            Line2D([0], [0], marker='o', color='w', label='Bastille',
+                   markerfacecolor=colors[1], markersize=10),
+            Line2D([0], [0], marker='o', color='w', label='Wraith',
+                   markerfacecolor=colors[2], markersize=10)
+        ]
+        ax.legend(handles=legend_elements, title='Characters')
+
+        canvas = FigureCanvasTkAgg(fig, master=self.root)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        button_quit = tk.Button(self.root, text="Quit", command=self.cleanup)
+        button_quit.pack()
+
+        self.root.mainloop()
+
+
+    def create_ability_graph(self):
+        data = {0: [], 1: [], 2: []}
+        with open(self.data_collector.ability_usage_file, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)
+            for row in reader:
+                if len(row) >= 2:
+                    char_id = int(row[1])
+                    count = int(row[2]) if len(row) > 2 else 1
+                    data[char_id].append(count)
+
+        averages = [np.mean(data[i]) if data[i] else 0 for i in range(3)]
+
+        self.root = tk.Tk()
+        self.root.title("Ability Usage Statistics")
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        colors = ['#FF0000', '#0000FF', '#00FF00']
+
+        bars = ax.bar(range(3), averages, color=colors)
+
+        ax.set_xticks(range(3))
+        ax.set_xticklabels(['0', '1', '2'])
+        ax.set_xlabel('Character ID')
+        ax.set_ylabel('Average Ability Usage')
+        ax.set_title('Average Ability Usage')
+
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2., height,
+                    f'{int(height)}',
+                    ha='center', va='bottom')
+
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', label='Cryo',
+                   markerfacecolor=colors[0], markersize=10),
+            Line2D([0], [0], marker='o', color='w', label='Bastille',
+                   markerfacecolor=colors[1], markersize=10),
+            Line2D([0], [0], marker='o', color='w', label='Wraith',
+                   markerfacecolor=colors[2], markersize=10)
+        ]
+        ax.legend(handles=legend_elements, title='Characters')
+
+        canvas = FigureCanvasTkAgg(fig, master=self.root)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        button_quit = tk.Button(self.root, text="Quit", command=self.cleanup)
+        button_quit.pack()
+
+        self.root.mainloop()
+
+
+
+
+    def run(self):
+        running = True
+        while running:
+            self.draw()
+            pygame.display.flip()
+
+            result = self.handle_input()
+            if result == "back":
+                running = False
 class Ball:
     def __init__(self, x, y, speed=3):
         self.x = x
@@ -258,6 +753,10 @@ class Player:
         self.hitbox_x = (self.image_width - self.hitbox_width) // 2
         self.hitbox_y = (self.image_height - self.hitbox_height) // 2
 
+        self.selected_character = None
+        self.start_time = time.time()
+        self.total_playtime = 0
+        self.ability_usage_count = 0
         self.boss_defeated = 0
 
         self.deflect_particles = []
@@ -319,6 +818,7 @@ class Player:
     def use_ability(self, ball):
         global ability_last_used
         if time.time() - ability_last_used >= ABILITY_COOLDOWN:
+            self.ability_usage_count += 1
             if self.color == RED:
                 ball.freeze_for_duration(3)
             elif self.color == BLUE:
@@ -922,6 +1422,7 @@ class Game:
         self.character_selection = CharacterSelection()
         self.player = None
         self.ball = None
+        self.data_collector = DataCollector()
 
         self.boss_type = ['fire', 'ice']
         self.boss_num = random.randint(0, 1)
@@ -993,8 +1494,16 @@ class Game:
 
             self.game_time = time.time() - self.game_start_time
             if self.player.hp <= 0:
+
+                self.data_collector.record_dash_usage(self.boss_type[self.boss_num], self.player.dash_count_fire if self.boss_type[self.boss_num] == "fire" else self.player.dash_count_ice)
+                self.data_collector.record_playtime(int(self.game_time))
+                self.data_collector.record_ability_usage(self.character_selection.selected_character, self.player.ability_usage_count)
+                self.data_collector.record_boss_defeated(self.character_selection.selected_character, self.player.boss_defeated)
+
+
                 self.game_over_screen.draw(self.player ,self.game_time)
                 pygame.display.flip()
+
 
                 event = None
                 while event is None:
@@ -1109,12 +1618,15 @@ def run():
             character_selection.draw_title()
             character_selection.draw_characters()
             character_selection.draw_instructions()
-            character_selection.draw_quit_button()
+            character_selection.draw_button()
             pygame.display.flip()
 
             show_menu = not character_selection.handle_input()
 
+
         game = Game()
+        if not show_menu:
+            game.data_collector.record_character_choice(character_selection.selected_character)
         game.character_selection = character_selection
         game_result = game.start_game()
 
