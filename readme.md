@@ -41,10 +41,15 @@ An action 2D game where the player faces off with the boss using ball. Players c
     Python 3.7+
 
 - Required libraries:
-  - **`Pygame`**  
-  - **`Tkinter`**  
+  - **`Pygame`**
   - **`Matplotlib`**
   - **`Numpy`**
+
+### Install Required libraries:
+   ```bash  
+   pip install -r requirements.txt
+   ```  
+
 
 ### Step to run:
 1. Clone or download this project:  
