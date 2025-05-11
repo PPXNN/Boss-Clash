@@ -1,15 +1,34 @@
 # Boss Clash
-Ver 0.5
+Ver 1.0
 
 ## Overview
-Boss Clash is an action-packed 2D game where players battle against powerful bosses with unique abilities. Choose from three distinct characters, each with special skills, and survive as long as you can against increasingly challenging enemies.
+An action 2D game where the player faces off with the boss using ball. Players can use various abilities and dashing mechanics to avoid attacks and deflect the ball from the boss to itself. The game combines simple controls with progressively more difficult boss battles.
 
-## Features
-### Character Selection
-Three unique characters with different abilities:
-- **Cryo**: Freeze ball projectiles
-- **Bastille**: Create protective wall
-- **Wraith**: Temporary invisibility
+## Key Features
+### Character System
+- **Three Unique Characters**:
+  - **Cryo**: Freeze projectiles and enemies
+  - **Bastille**: Create defensive walls
+  - **Wraith**: Temporary invisibility
+
+### Combat Mechanics
+- **Core Actions**:
+  - Dash movement (LShift)
+  - Projectile deflection (E)
+  - Special abilities (Q) with cooldowns
+  
+- **Boss Types**:
+    - Fire boss with lava fields and fireballs
+    - Ice boss with freezing zones and snowballs
+    - Adaptive difficulty (bosses become more aggressive at low health)
+
+### Data Analytics
+- Tracks and visualizes:
+    - Ability usage statistics
+    - Playtime statistics
+    - Boss defeat records
+    - Character selection trends
+    - Dash usage statistics
 
 ## Controls
 - **Movement**: `W`, `A`, `S`, `D` keys
@@ -17,8 +36,29 @@ Three unique characters with different abilities:
 - **Special Ability**: `Q` key (10s cooldown)
 - **Deflect**: `E` key
 
-## Requirements
-- Python 3.x
-- Pygame
-- Tkinter (for name input)
-        
+# How to install and run the project
+### Requirement:
+    Python 3.7+
+
+- Required libraries:
+  - **`Pygame`**  
+  - **`Tkinter`**  
+  - **`Matplotlib`**
+  - **`Numpy`**
+
+### Step to run:
+1. Clone or download this project:  
+   If you want to clone the repository, use the following command:  
+   ```bash  
+   git clone https://github.com/PPXNN/Boss-Clash  
+   ```  
+
+2. Go to the `Boss-Clash` folder or use the following command:  
+   ```bash  
+   cd Boss-Clash  
+   ```  
+
+3. Run the game on the folder or use the following command:  
+   ```bash  
+   python project.py 
+   ```    
