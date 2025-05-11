@@ -80,4 +80,6 @@ The data will be presented in tables for easy visualization.
 | graph4 |Enemies Defeated| Bar chart | Character Type | Boss defeat |
 | graph5 | Most Chosen Character by Player| Pie chart | -   | - |
 
+### Video
 
+[Video link](https://youtu.be/O1eUmjmw_cQ)
