@@ -70,4 +70,14 @@ The data will be presented in tables for easy visualization.
 |Enemies Defeated | Tracks how often the boss is defeated by player   | Tracks how often the boss is defeated by player in 50 games.   |Player class,boss_defeated | bar chart   |
 |Most Chosen Character by Player | Understand player preferences for characters.  | Track character selection across 50 sessions.  |Player class, selected_character| pie chart   |
 
+### Graph
+
+|        | Feature | type      | x-axis | y-axis |
+|--------|---------|-----------|-----|---|
+| graph1 |Time Played| Boxplot   | -   | - |
+| graph2 |Average Player Dash | Bar chart | Type of boss | Average dash used |
+| graph3 |Average Ability Usage| Bar chart | Character Type | Average Ability Usage Count |
+| graph4 |Enemies Defeated| Bar chart | Character Type | Boss defeat |
+| graph5 | Most Chosen Character by Player| Pie chart | -   | - |
+
 
