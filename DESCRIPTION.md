@@ -12,14 +12,20 @@ An action 2D game where the player faces off with the boss using ball. Players c
 
 ### Combat Mechanics
 - **Core Actions**:
-  - Dash movement (LShift)
-  - Projectile deflection (E)
-  - Special abilities (Q) with cooldowns
+  - Dash movement
+  - Projectile deflection
+  - Special abilities
   
 - **Boss Types**:
     - Fire boss with lava fields and fireballs
     - Ice boss with freezing zones and snowballs
     - Adaptive difficulty (bosses become more aggressive at low health)
+
+## Controls
+- **Movement**: `W`, `A`, `S`, `D` keys
+- **Dash**: `Left Shift` (5s cooldown)
+- **Special Ability**: `Q` key (10s cooldown)
+- **Deflect**: `E` key
 
 ### Data Analytics
 - Tracks and visualizes:
